@@ -14,9 +14,18 @@ extern int errno;
 #define BUF_LEN 5
 // 1024 is a better buffer length, but we want to practice reading all
 
-int main(void) {
+int main(int argc, char *argv[]) {
 
-    int fd = open("poem.txt", O_RDONLY);
+    char *txt;
+
+    if (argc == 2) {
+        txt = argv[1];
+    }
+    else {
+        txt = "poem.txt";
+    }
+
+    int fd = open(txt, O_RDONLY);
     if (fd == -1) {
         perror("open error");
         return 1;
