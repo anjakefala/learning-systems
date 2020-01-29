@@ -86,7 +86,28 @@ int main(int argc, char *argv[]) {
     buf = tmp_buf;
     buf[used] = '\0';
 
-    //printf("read: %s\n", buf);
+    // close the stream
+    if (close(fd) == -1) {
+        perror("close error");
+        return 1;
+    }
+
+    ssize_t amt_written;
+
+    fd = creat("copied.txt", 0644);
+
+    if (fd == -1) {
+        perror("create error:");
+        return 1;
+    }
+
+    amt_written = write(fd, buf, used + 1);
+    if (amt_written == -1) {
+        perror("write error:");
+        return 1;
+    } else if (amt_written != used + 1) {
+        printf("A partial write has occurred!\n");
+    }
 
     // close the stream
     if (close(fd) == -1) {
