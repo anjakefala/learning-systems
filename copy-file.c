@@ -34,21 +34,21 @@ int main(int argc, char *argv[]) {
     }
 
     // read entire file
-    size_t new_buf_len, buf_len = 10240;
+    size_t buf_len = 10240;
     size_t used = 0; // pointer that keeps track of the last filled spot of the buffer
     ssize_t amt_ret;
 
-    char *new_buf, *buf = (char*) malloc(buf_len);
+    char *tmp_buf, *buf = (char*) malloc(buf_len);
 
     while(1) {
         // if the next read might overflow the buffer
         if (used + BLOCK_LEN >= buf_len) {
             // allocate a larger block of memory for the buffer
             buf_len = buf_len + 10240;
-            new_buf = (char*) realloc(buf, buf_len);
+            tmp_buf = (char*) realloc(buf, buf_len);
 
-            if(new_buf != NULL) {
-                buf = new_buf;
+            if(tmp_buf != NULL) {
+                buf = tmp_buf;
                 continue;
             }
             else {
@@ -77,13 +77,13 @@ int main(int argc, char *argv[]) {
     }
 
     // legal C strings must end with '\0'
-    new_buf = realloc(buf, used + 1);
-    if (new_buf == NULL) {
+    tmp_buf = realloc(buf, used + 1);
+    if (tmp_buf == NULL) {
         free(buf);
         printf("Error (re)allocating memory\n");
         exit (1);
     }
-    buf = new_buf;
+    buf = tmp_buf;
     buf[used] = '\0';
 
     //printf("read: %s\n", buf);
