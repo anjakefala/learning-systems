@@ -9,15 +9,16 @@
 #include <errno.h> // needed for errno()
 #include <fcntl.h>
 #include <unistd.h> // needed for close()
+#include <string.h>
 
 extern int errno;
-#define BUF_LEN 5
-// 1024 is a better buffer length, but we want to practice reading all
+#define BLOCK_LEN 1024
 
 int main(int argc, char *argv[]) {
 
     char *txt;
 
+    // parse if name of file was passed-in through commandline
     if (argc == 2) {
         txt = argv[1];
     }
@@ -25,28 +26,67 @@ int main(int argc, char *argv[]) {
         txt = "poem.txt";
     }
 
+    // open file for reading
     int fd = open(txt, O_RDONLY);
     if (fd == -1) {
         perror("open error");
         return 1;
     }
 
-    char *buf = (char*) malloc(1024);
+    // read entire file
+    size_t new_buf_len, buf_len = 10240;
+    size_t used = 0; // pointer that keeps track of the last filled spot of the buffer
     ssize_t amt_ret;
-    int i = 0;
 
-    while((amt_ret = read(fd, (buf + i * BUF_LEN) , BUF_LEN)) != 0) {
-        if (amt_ret == -1) {
-            if (errno == EINTR)
+    char *new_buf, *buf = (char*) malloc(buf_len);
+
+    while(1) {
+        // if the next read might overflow the buffer
+        if (used + BLOCK_LEN >= buf_len) {
+            // allocate a larger block of memory for the buffer
+            buf_len = buf_len + 10240;
+            new_buf = (char*) realloc(buf, buf_len);
+
+            if(new_buf != NULL) {
+                buf = new_buf;
                 continue;
-            perror("read error");
-            break;
+            }
+            else {
+                // if we failed to allocate more memory
+                // clean up after yourself, and exit
+                free(buf);
+                printf("Error (re)allocating memory\n");
+                exit (1);
+            }
+
         }
-        i += 1;
+
+        else {
+            amt_ret = read(fd, buf + used, BLOCK_LEN);
+            // hit the EOF
+            if (amt_ret == 0)
+                break;
+            if (amt_ret == -1) {
+                if (errno == EINTR)
+                    continue;
+                perror("read error");
+                break;
+            }
+            used += amt_ret;
+        }
     }
 
+    // legal C strings must end with '\0'
+    new_buf = realloc(buf, used + 1);
+    if (new_buf == NULL) {
+        free(buf);
+        printf("Error (re)allocating memory\n");
+        exit (1);
+    }
+    buf = new_buf;
+    buf[used] = '\0';
 
-    printf("read: %s\n", buf);
+    //printf("read: %s\n", buf);
 
     // close the stream
     if (close(fd) == -1) {
@@ -54,6 +94,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // free allocated memory
     free(buf);
 
     return 0;
