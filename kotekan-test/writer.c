@@ -65,35 +65,31 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    int n = 0;
+
     // Enter a loop that transfers data to the shared
     // memory segment.
-    while(1) {
-        char c = 'a';
 
-        for (int i = 0; i < BUF_SIZE; i++ ) {
+    for (int i = 0; i < 10; i++ ) {
 
-            //  - Transfer character into the shared memory segment
-            memcpy(addr+i, "W", 1);
+        getchar();
+        //  - Transfer character into the shared memory segment
+        //memcpy(addr+i, "W", 1);
 
-            //  - Release (increment) the lock
-            if (sem_post(sem) == -1) {
-                perror("sem_post");
-                exit(EXIT_FAILURE);
-            }
-            sleep(1);
-
-            //  - Reserve (decrement) the lock
-            if (sem_wait(sem) == -1) {
-                perror("sem_wait");
-                exit(EXIT_FAILURE);
-            }
-
-            //  - Transfer character into the shared memory segment
-            memcpy(addr+i, &c, 1);
-
-            sleep(1);
-            c++;
+        //  - Release (increment) the lock
+        if (sem_post(sem) == -1) {
+            perror("sem_post");
+            exit(EXIT_FAILURE);
         }
+
+        //  - Reserve (decrement) the lock
+        if (sem_wait(sem) == -1) {
+            perror("sem_wait");
+            exit(EXIT_FAILURE);
+        }
+
+        //  - Transfer character into the shared memory segment
+        memcpy(addr+i*sizeof(int), &n, sizeof(int));
     }
     printf("Done!\n");
     exit(EXIT_SUCCESS);

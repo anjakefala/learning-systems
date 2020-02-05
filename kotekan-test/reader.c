@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
     sem_t *sem;
 
     int fd;
-    char *addr;
+    int *addr;
     struct stat sb;
 
     // Obtain the details of the semaphore set by the writer program
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    while(1) {
+    for (int i=0;; ++i) {
         // Reserve (decrement) the lock
         // should the reader lock?
         if (sem_wait(sem) == -1) {
@@ -61,8 +61,7 @@ int main(int argc, char *argv[]) {
         }
 
         // Write the block of data in the shared memory segment to standard output
-        write(STDOUT_FILENO, addr, sb.st_size);
-        printf("\n");
+        printf("[%d] %d\n", i, *addr);
 
         // Release (increment) the writer semaphore
         if (sem_post(sem) == -1) {
