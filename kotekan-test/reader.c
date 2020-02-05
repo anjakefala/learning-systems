@@ -9,6 +9,8 @@
 #include <semaphore.h>
 #include <fcntl.h>
 
+#include "rw.h"
+
 #define BUF_SIZE 1024
 
 #define SEM_NAME "kotekan"
@@ -19,7 +21,7 @@ int main(int argc, char *argv[]) {
     sem_t *sem;
 
     int fd;
-    int *addr;
+    void *addr;
     struct stat sb;
 
     // Obtain the details of the semaphore set by the writer program
@@ -30,43 +32,45 @@ int main(int argc, char *argv[]) {
     }
 
     // Open existing shared memory object
-    fd = shm_open(MEM_NAME, O_RDONLY, 0);
+    fd = CHECK(shm_open(MEM_NAME, O_RDONLY, 0));
 
     // Use shared memory object size as length argument for mmap()
     // and as number of bytes to write()
-    if (fstat(fd, &sb) == -1) {
-        perror("fstat");
-        exit(EXIT_FAILURE);
-    }
+    CHECK(fstat(fd, &sb));
 
     // Attach the shared memory segment for read-only access
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
+
     if (addr == MAP_FAILED) {
         perror("mmap");
         exit(EXIT_FAILURE);
     }
 
     // fd is no longer needed
-    if (close(fd) == -1) {
-        perror("close");
-        exit(EXIT_FAILURE);
-    }
+    CHECK(close(fd));
 
     for (int i=0;; ++i) {
-        // Reserve (decrement) the lock
-        // should the reader lock?
-        if (sem_wait(sem) == -1) {
-            perror("sem_wait");
-            exit(EXIT_FAILURE);
-        }
+        volatile record_t *rec = addr;
 
-        // Write the block of data in the shared memory segment to standard output
-        printf("[%d] %d\n", i, *addr);
+        char msg[256];
 
-        // Release (increment) the writer semaphore
-        if (sem_post(sem) == -1) {
-            perror("sem_post");
-            exit(EXIT_FAILURE);
+        int gen;
+        int n = 0;
+        do {
+            if (gen == 0 || rec->gen == 0) continue;
+
+            n += 1;
+            gen = rec->gen;
+            if (gen > 0) {
+                memcpy(msg, (char *) rec->msg, 256);
+            }
+            if (rec->gen == gen) {
+                sem_wait();
+            }
+        } while (rec->gen != gen);
+        if (n > 1) {
+            printf("[%d] %s (took %d tries)\n", gen, msg, n);
         }
+        n = 0;
     }
 }

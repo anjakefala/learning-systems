@@ -8,6 +8,8 @@
 #include <semaphore.h>  // semaphores
 #include <fcntl.h>      // file descriptors
 
+#include "rw.h"
+
 #define BUF_SIZE 1024   // Size of transfer buffer
 
 #define SEM_NAME "kotekan"
@@ -21,7 +23,7 @@ int main(int argc, char *argv[]) {
 
     int fd;
     size_t len = BUF_SIZE;
-    char *addr;
+    void *addr;
 
     // 1. Create the semaphore that is being used by the writer and reader
     // the writer should have first access
@@ -70,26 +72,18 @@ int main(int argc, char *argv[]) {
     // Enter a loop that transfers data to the shared
     // memory segment.
 
-    for (int i = 0; i < 10; i++ ) {
+    for (;;) {
+        volatile record_t *rec = addr;
+        int nextgen = rec->gen+1;
 
-        getchar();
-        //  - Transfer character into the shared memory segment
-        //memcpy(addr+i, "W", 1);
-
-        //  - Release (increment) the lock
-        if (sem_post(sem) == -1) {
-            perror("sem_post");
-            exit(EXIT_FAILURE);
+        // busy loop
+        for (int i=0; i < 1000; ++i) {
+            rec->msg[10] = 'a';
         }
 
-        //  - Reserve (decrement) the lock
-        if (sem_wait(sem) == -1) {
-            perror("sem_wait");
-            exit(EXIT_FAILURE);
-        }
-
-        //  - Transfer character into the shared memory segment
-        memcpy(addr+i*sizeof(int), &n, sizeof(int));
+        rec->gen = 0;
+        sprintf(rec->msg, "%d", nextgen);
+        rec->gen = nextgen;
     }
     printf("Done!\n");
     exit(EXIT_SUCCESS);
