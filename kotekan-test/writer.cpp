@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 
     int fd;
     size_t len = BUF_SIZE;
-    void *addr;
+    char *addr;
 
     // 1. Create the semaphore that is being used by the writer and reader
     // the writer should have first access
@@ -33,57 +33,43 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (sem_wait(sem) == -1) {
-        perror("sem_wait");
-        exit(EXIT_FAILURE);
-    }
+    CHECK(sem_wait(sem));
 
     printf("Wait succeeded!\n");
 
     // 2. Create the shared memory segment and attach it to the writer's
     // virtual address space at an address chosen by the system
     fd = shm_open(MEM_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-    if (fd == -1) {
-        perror("shm_open");
-        exit(EXIT_FAILURE);
-    }
+    CHECK(fd == -1);
 
     // Resize object to hold buffer
-    if (ftruncate(fd, len) == -1) {
-        perror("ftruncate");
-        exit(EXIT_FAILURE);
-    }
+    CHECK(ftruncate(fd, len));
     printf("Resized to %ld bytes\n", (long) len);
 
-    addr = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    addr = (char*) mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (addr == MAP_FAILED) {
         perror("mmap");
         exit(EXIT_FAILURE);
     }
 
     // 'fd' is no longer needed
-    if (close(fd) == -1) {
-        perror("close");
-        exit(EXIT_FAILURE);
-    }
+    CHECK(close(fd));
 
-    int n = 0;
 
     // Enter a loop that transfers data to the shared
     // memory segment.
 
-    for (;;) {
-        volatile record_t *rec = addr;
-        int nextgen = rec->gen+1;
+    while(true) {
+        for (char n = 'a';n <= 'z';n++) {
+            for (int i = 0;i < 128;i++) {
+                CHECK(sem_post(sem));
 
-        // busy loop
-        for (int i=0; i < 1000; ++i) {
-            rec->msg[10] = 'a';
+                CHECK(sem_wait(sem));
+
+                memcpy(addr + i, &n, 1);
+
+            }
         }
-
-        rec->gen = 0;
-        sprintf(rec->msg, "%d", nextgen);
-        rec->gen = nextgen;
     }
     printf("Done!\n");
     exit(EXIT_SUCCESS);

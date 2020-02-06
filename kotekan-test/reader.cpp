@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
     sem_t *sem;
 
     int fd;
-    void *addr;
+    char *addr;
     struct stat sb;
 
     // Obtain the details of the semaphore set by the writer program
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     CHECK(fstat(fd, &sb));
 
     // Attach the shared memory segment for read-only access
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
+    addr = (char*) mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
 
     if (addr == MAP_FAILED) {
         perror("mmap");
@@ -50,27 +50,12 @@ int main(int argc, char *argv[]) {
     CHECK(close(fd));
 
     for (int i=0;; ++i) {
-        volatile record_t *rec = addr;
+        CHECK(sem_wait(sem));
 
-        char msg[256];
+        printf("\n[%d]", i);
+        write(STDOUT_FILENO, addr, sb.st_size);
+        printf("\n");
 
-        int gen;
-        int n = 0;
-        do {
-            if (gen == 0 || rec->gen == 0) continue;
-
-            n += 1;
-            gen = rec->gen;
-            if (gen > 0) {
-                memcpy(msg, (char *) rec->msg, 256);
-            }
-            if (rec->gen == gen) {
-                sem_wait();
-            }
-        } while (rec->gen != gen);
-        if (n > 1) {
-            printf("[%d] %s (took %d tries)\n", gen, msg, n);
-        }
-        n = 0;
+        CHECK(sem_post(sem));
     }
 }
