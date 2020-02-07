@@ -8,6 +8,8 @@
 #include <semaphore.h>  // semaphores
 #include <fcntl.h>      // file descriptors
 
+#include <sys/time.h>
+
 #include "rw.h"
 
 #define BUF_SIZE 1024   // Size of transfer buffer
@@ -21,10 +23,6 @@ int main(int argc, char *argv[]) {
     int flags = O_CREAT;
     int perms = (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
-    int fd;
-    size_t len = BUF_SIZE;
-    char *addr;
-
     // 1. Create the semaphore that is being used by the writer and reader
     // the writer should have first access
     sem = sem_open(SEM_NAME, flags, perms, sem_value);
@@ -37,6 +35,10 @@ int main(int argc, char *argv[]) {
 
     printf("Wait succeeded!\n");
 
+    int fd;
+    size_t len = BUF_SIZE;
+    time_t* addr;
+
     // 2. Create the shared memory segment and attach it to the writer's
     // virtual address space at an address chosen by the system
     fd = shm_open(MEM_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
@@ -46,7 +48,7 @@ int main(int argc, char *argv[]) {
     CHECK(ftruncate(fd, len));
     printf("Resized to %ld bytes\n", (long) len);
 
-    addr = (char*) mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    addr = (time_t*) mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (addr == MAP_FAILED) {
         perror("mmap");
         exit(EXIT_FAILURE);
@@ -55,20 +57,23 @@ int main(int argc, char *argv[]) {
     // 'fd' is no longer needed
     CHECK(close(fd));
 
-
     // Enter a loop that transfers data to the shared
     // memory segment.
 
     while(true) {
-        for (char n = 'a';n <= 'z';n++) {
-            for (int i = 0;i < 128;i++) {
-                CHECK(sem_post(sem));
+        for (size_t i = 0;i < len; i = i + sizeof(time_t)) {
+            CHECK(sem_post(sem));
 
-                CHECK(sem_wait(sem));
+            struct timeval timestamp;
+            gettimeofday(&timestamp, NULL);
 
-                memcpy(addr + i, &n, 1);
+            time_t time_us = timestamp.tv_sec * 1000000 + timestamp.tv_usec;
+            printf("%lu\n", time_us);
 
-            }
+            CHECK(sem_wait(sem));
+
+            memcpy(addr + i, &time_us, sizeof(time_t));
+
         }
     }
     printf("Done!\n");
