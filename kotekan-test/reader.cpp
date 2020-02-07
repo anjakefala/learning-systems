@@ -9,6 +9,8 @@
 #include <semaphore.h>
 #include <fcntl.h>
 
+#include <sys/time.h>
+
 #include "rw.h"
 
 #define BUF_SIZE 1024
@@ -21,7 +23,7 @@ int main(int argc, char *argv[]) {
     sem_t *sem;
 
     int fd;
-    char *addr;
+    time_t *addr;
     struct stat sb;
 
     // Obtain the details of the semaphore set by the writer program
@@ -39,7 +41,7 @@ int main(int argc, char *argv[]) {
     CHECK(fstat(fd, &sb));
 
     // Attach the shared memory segment for read-only access
-    addr = (char*) mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
+    addr = (time_t*) mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
 
     if (addr == MAP_FAILED) {
         perror("mmap");
@@ -52,8 +54,9 @@ int main(int argc, char *argv[]) {
     for (int i=0;; ++i) {
         CHECK(sem_wait(sem));
 
-        printf("\n[%d]", i);
-        write(STDOUT_FILENO, addr, sb.st_size);
+        printf("[%d]", i);
+        for (int j = 0; j < sb.st_size; j = j + sizeof(time_t))
+            printf("%lu, ", *(addr + j));
         printf("\n");
 
         CHECK(sem_post(sem));
