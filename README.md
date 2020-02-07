@@ -14,6 +14,16 @@
 3. Then increase BUF_LEN to block size
 4. Write write() portion of copy-file
 
+## concepts to learn
+- memmap
+- block sizes for performance
+- error handling
+- multiplexed I/O
+    - locking
+    - polling for available fd
+- flushing
+- seeking in memory for writing
+
 ## Tools
 - valgrind
 - gcc

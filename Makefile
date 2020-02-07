@@ -1,6 +1,6 @@
 CC=gcc
 
-build: copy-file.c
+copy-file: copy-file.c
 	$(CC) -o copy-file copy-file.c
 
 clean:
