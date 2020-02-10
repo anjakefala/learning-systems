@@ -1,21 +1,21 @@
-#include <sys/types.h>  // Type definitions used by many programs
-#include <stdio.h>      // Standard I/O functions
-#include <stdlib.h>     // Commonly used library functions + EXIT_SUCCESS, EXIT_FAILURE
-#include <unistd.h>     // System calls
-#include <string.h>     // String-handling functions
-
-#include <sys/mman.h>   // mmap
-#include <semaphore.h>  // semaphores
-#include <fcntl.h>      // file descriptors
-
-#include <sys/time.h>
-
 #include "rw.h"
 
 #define BUF_SIZE 1024   // Size of transfer buffer
 
-#define SEM_NAME "kotekan"
-#define MEM_NAME "ringBuffer"
+// Rick variables
+
+// number of chunks
+#define BUFFER_SIZE 20
+
+// 32MB per chunk
+#define N_DATA 1024
+#define M_DATA 4096
+
+// number of chunks created in this test
+#define TEST_LENGTH 1000
+
+// chunk size in MB
+#define CHUNK_SIZE N_DATA * M_DATA * sizeof(double) / 1048576
 
 int main(int argc, char *argv[]) {
     sem_t *sem;

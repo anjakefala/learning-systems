@@ -1,22 +1,8 @@
-#include <sys/types.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-
-#include <sys/mman.h>
 #include <sys/stat.h>
-#include <semaphore.h>
-#include <fcntl.h>
-
-#include <sys/time.h>
 
 #include "rw.h"
 
 #define BUF_SIZE 1024
-
-#define SEM_NAME "kotekan"
-#define MEM_NAME "ringBuffer"
 
 int main(int argc, char *argv[]) {
     // Transfer blocks of data from shared memory to stdout
